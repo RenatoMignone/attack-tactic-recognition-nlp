@@ -6,3 +6,5 @@ out/
 
 # Temporary files
 tmp/
+
+lab/data/cyberlab.csv
