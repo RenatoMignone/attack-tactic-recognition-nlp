@@ -1,26 +1,26 @@
 \section{Tokenization}
 In this section, we compare the tokenization behavior of two pre-trained tokenizers: BERT (google-bert/bert-base-uncased), a general-purpose model trained on English text, and UniXcoder (microsoft/unixcoder-base), a code-oriented model designed for programming languages.
 
-\paragraph{Command tokenization} We first tokenize a sample list of SSH commands: \texttt{cat}, \texttt{shell}, \texttt{echo}, \texttt{top}, \texttt{chpasswd}, \texttt{crontab}, \texttt{wget}, \texttt{busybox}, and \texttt{grep}. The BERT tokenizer divides words into subword units based on frequency in general English text, while the UniXcoder tokenizer understands common shell commands and structures from its code-centric training. Both tokenizers keep certain words intact because they represent high-frequency tokens in their training data. For instance, \texttt{cat}, \texttt{echo}, and \texttt{grep} are common enough to have dedicated vocabulary entries. UniXcoder has many bash commands in its vocabulary from code training, while BERT retains them only if they appear frequently in general text.
+\paragraph{Command tokenization} We first tokenize a sample list of SSH commands: \texttt{cat}, \texttt{shell}, \texttt{echo}, \texttt{top}, \texttt{chpasswd}, \texttt{crontab}, \texttt{wget}, \texttt{busybox}, and \texttt{grep}. The BERT tokenizer divides words into subword units based on frequency in general English text, while the UniXcoder tokenizer understands common shell commands and structures from its code-centric training. Both tokenizers keep certain words intact (e.g., \texttt{cat}, \texttt{echo}, \texttt{grep}) because they represent high-frequency tokens in their respective training data: UniXcoder has many bash commands in its vocabulary from code training, while BERT retains them only if they appear frequently in general text.
 
-\paragraph{Full corpus tokenization} When tokenizing the entire training corpus, BERT produces on average \SI{178.6}{\tokens} per session with a maximum of \SI{1889}{\tokens}, while UniXcoder produces on average \SI{409.3}{\tokens} per session with a maximum of \SI{28920}{\tokens}. UniXcoder tends to generate more tokens because it performs code-specific splitting on characters like \texttt{\{}, \texttt{\&\&}, and handles file paths differently. \Cref{fig:task2_ecdf_tokens} shows the ECDF distribution of token counts. The vertical red line marks the 512-token context size limit of both models.
+\paragraph{Full corpus tokenization} When tokenizing the entire training corpus, BERT produces on average \SI{178.6}{\tokens} per session (max \SI{1889}{\tokens}), while UniXcoder produces \SI{409.3}{\tokens} per session (max \SI{28920}{\tokens}). Both tokenizers produce high token counts because SSH sessions contain many special characters and non-standard strings. BERT generates fewer tokens because it maps unknown or rare character sequences to \texttt{[UNK]} tokens, while UniXcoder, designed for code, attempts to tokenize every character sequence individually. Specifically, in the longest session (224 words), BERT produces 113 \texttt{[UNK]} tokens, while UniXcoder produces zero unknown tokens but generates 28920 tokens by splitting special characters. UniXcoder performs code-specific splitting on characters like \texttt{\{}, \texttt{\&\&}, and handles file paths by tokenizing each path component separately.
 
-\begin{figure}
+\Cref{fig:task2_ecdf_tokens} shows the ECDF distribution of token counts. For BERT (\cref{fig:task2_ecdf_bert}), approximately \SI{90}{\percent} of sessions fall below the 512-token limit, with a steep rise indicating that most sessions cluster around 100--300 tokens. For UniXcoder (\cref{fig:task2_ecdf_unixcoder}), only about \SI{87}{\percent} of sessions remain below the limit, with a longer tail extending to nearly 30000 tokens due to the verbose tokenization of special characters. With the 512-token limit, 24 sessions would be truncated by the BERT tokenizer and 29 by the UniXcoder tokenizer.
+
+\begin{figure}[t]
 	\centering
     \subfloat[][{ECDF for BERT.}\label{fig:task2_ecdf_bert}]
 	{\includegraphics[width=.48\linewidth]{img/Task2/ecdf_distribution_tokens_bert.png}} \quad
 	\subfloat[][{ECDF for UniXcoder.}\label{fig:task2_ecdf_unixcoder}]
 	{\includegraphics[width=.48\linewidth]{img/Task2/ecdf_distribution_tokens_unixcode.png}} \\
-  	\caption{ECDF distribution of number of tokens per session for both tokenizers. The red line indicates the model context size (512 tokens).}\label{fig:task2_ecdf_tokens}
+  	\caption{ECDF distribution of tokens per session. The red line indicates the 512-token context limit.}\label{fig:task2_ecdf_tokens}
 \end{figure}
 
-\paragraph{Truncation analysis} With the 512-token limit, 24 sessions would be truncated by the BERT tokenizer and 29 by the UniXcoder tokenizer. The longest session contains 224 words, but produces 1889 tokens with BERT and 28920 with UniXcoder. In the BERT-tokenized version, 113 tokens are marked as \texttt{[UNK]} (unknown), while UniXcoder produces 0 unknown tokens, demonstrating its superior handling of code-specific vocabulary.
+\paragraph{Word truncation preprocessing} Since \SI{98}{\percent} of words are shorter than 30 characters, we truncate all words exceeding this length before tokenization. After preprocessing, token counts decrease significantly: BERT produces on average \SI{128}{\tokens} per session (max 613), while UniXcoder produces \SI{111}{\tokens} per session (max 540). This reduces truncated sessions to only 6 for both tokenizers.
 
-\paragraph{Word truncation preprocessing} Since \SI{98}{\percent} of words are shorter than 30 characters, we truncate all words exceeding this length before tokenization. After this preprocessing step, token counts decrease significantly: BERT produces on average \SI{128}{\tokens} per session (max 613), while UniXcoder produces on average \SI{111}{\tokens} per session (max 540). This reduces the number of truncated sessions to only 6 for both tokenizers.
+The token-to-word ratios after preprocessing are 2.79 for BERT and 2.43 for UniXcoder. \textbf{UniXcoder achieves the better (lower) ratio}, indicating more efficient tokenization for SSH commands. \Cref{fig:task2_words_vs_tokens} visualizes this relationship: both plots show a linear correlation between words and tokens, but UniXcoder's scatter points lie closer to the diagonal (slope~$\approx$2.4) compared to BERT (slope~$\approx$2.8), confirming UniXcoder's more compact representation for this domain.
 
-The token-to-word ratios after preprocessing are 2.79 for BERT and 2.43 for UniXcoder. UniXcoder achieves the better (lower) ratio, indicating more efficient tokenization for this domain. \Cref{fig:task2_words_vs_tokens} shows the relationship between the number of words and tokens per session for both tokenizers, highlighting UniXcoder's more compact representation.
-
-\begin{figure}
+\begin{figure}[t]
 	\centering
     \subfloat[][{BERT.}\label{fig:task2_words_bert}]
 	{\includegraphics[width=.48\linewidth]{img/Task2/number_words_vs_number_tokens_bert.png}} \quad
