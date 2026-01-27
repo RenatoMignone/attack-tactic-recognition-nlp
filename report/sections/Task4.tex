@@ -1,4 +1,4 @@
-\section{Inference}
+\section{Inference}\label{sec:task4}
 We now focus on the inference dataset (\emph{cyberlab.csv}). First, we applied the same preprocessing adopted previously, truncating words longer than 30 characters. Then, we used the best model identified in \cref{sec:task3} (i.e., UnixCoder-base, $lr=10^{-5}$, 15 epochs) to predict MITRE tags for all the inference sessions, assigning to each bash word the tag associated with the first corresponding token.
 
 \subsection{Predicted tags analysis}
@@ -11,7 +11,7 @@ We now focus on the inference dataset (\emph{cyberlab.csv}). First, we applied t
 \label{tab:task4_tags_frequency}
 \begin{tabular}{lcccc}
 \toprule
-{\textbf{Tag}} & {\texttt{cat}} & {\texttt{grep}} & {\texttt{echo}} & {\texttt{rm}} \\
+{Tag} & {\texttt{cat}} & {\texttt{grep}} & {\texttt{echo}} & {\texttt{rm}} \\
 \midrule
 Defense Evasion 	& 0.000 	& 0.000 	& 0.000 	& 0.049  \\
 Discovery 			& 0.909 	& 1.000 	& 0.334 	& 0.738	\\

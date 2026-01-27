@@ -1,13 +1,13 @@
 \section{Model training}\label{sec:task3}
-In this section, we train and compare different transformer-based models for token-level classification of SSH sessions into MITRE tactics. We evaluate: (1)~pre-trained BERT, (2)~randomly initialized (naked) BERT, (3)~pre-trained UniXcoder, and (4)~alternative fine-tuning strategies with frozen layers. For each configuration, we perform a grid search over learning rates and select the best model based on the validation loss and macro F1-score. Specifically, the validation loss allows detecting divergence or instability typical of overfitting, while validation macro
-F1-score better reflects classification performance. We split the data into \SI{80}{\percent} training and \SI{20}{\percent} validation, using the provided test set for final evaluation.
+In this section, we train and compare different transformer-based models for token-level classification of SSH sessions into MITRE tactics. We evaluate: (1)~pre-trained BERT, (2)~randomly initialized (naked) BERT, (3)~pre-trained Unixcoder, and (4)~alternative fine-tuning strategies with frozen layers. For each configuration, we perform a grid search over learning rates and select the best model based on the validation loss and macro F1-score on the validation loss. Specifically, the validation loss allows detecting divergence or instability typical of overfitting, while validation macro F1-score better reflects classification performance. We split the training set into \SI{80}{\percent} training and \SI{20}{\percent} validation, using the provided test set for the final evaluation.
 
 \subsection{Fine-tuning Pre-trained BERT}
-First, we fine-tune a pre-trained BERT model for Named Entity Recognition, using the pre-trained weights. We trained the model for 40 epochs and with three different learning rates ($5e-6$, $10^{-5}$ and $2e-5$). \Cref{fig:task3_bert_results} shows the validation loss and macro F1-score curves for different learning rates: the $10^{-5}$ learning rate achieves the best balance between convergence speed and final performance, with validation loss stabilizing around epoch 20 and F1-score reaching its peak around \num{0.60}. With a lower learning rate ($5e-6$), the model converges slower and achieves a significantly lower macro F1 score. With a higher one ($2e-5$), the initial progress is faster, but the macro F1 score continues rising while the validation loss is already increasing: this may be a symptom of overfitting and poor generalization. Moreover, at 20 epochs it reaches a F1 score similar to the one obtained with $1e-5$. Hence, we choose as best model the one with $1e-5$, stopping the training at 20 epochs.
+\paragraph{Model selection} First, we fine-tune a pre-trained BERT model for Named Entity Recognition, using the pre-trained weights. We trained the model for 40 epochs and with three different learning rates (\num{5e-6}, \num{1e-5} and \num{2e-5}). \Cref{fig:task3_bert_results} shows the validation loss and macro F1-score curves for different learning rates: the \num{1e-5} learning rate achieves the best balance between convergence speed and final performance, with validation loss stabilizing around epoch 20 and macro F1-score reaching its peak of \num{0.60}. While the higher learning rate (\num{2e-5}) reached a comparable F1-score more quickly (by epoch 12), it also exhibited immediate signs of overfitting thereafter. With a lower learning rate (\num{5e-6}), the model converges slower and achieves a significantly lower macro F1-score. Consequently, we selected the model trained with learning rate \num{1e-5} to prioritize validation stability over the slightly faster, but more volatile, convergence of higher learning rates, and implemented manual early stopping at epoch 20.
 
-The performance on the test set is summarized in \cref{tab:task3_bert_comparison}. The model achieves a token accuracy of \num{0.87}. The recall-precision imbalance (\num{0.57} vs {0.84}) indicates that the model is conservative, generating more false negatives than false positives. The average session fidelity is \num{0.82}, indicating that, in general, the model correctly predict $\frac{4}{5}$ tokens in each session. Analyzing the per class F1 scores (\cref{fig:task3_f1_comparison}), we obseve that he model performs well on high-support classes (\emph{Discovery}: 0.94, \emph{Execution}: 0.91) but struggles with minority classes (\emph{Defense Evasion}: 0.40, \emph{Impact}: 0.31, \emph{Other}: 0.25).
+\paragraph{Performance evaluation} The performance on the test set is summarized in \cref{tab:task3_comparison}. The results demonstrate that the model can achieve quite good results also with a relatively small number of training sessions, reaching a token accuracy of \num{0.87}. The recall-precision imbalance (\num{0.57} vs {0.84}) indicates that the model is conservative, generating more false negatives than false positives. The average session fidelity is \num{0.82}, meaning that, in general, the model correctly predicts four fifths of tokens in each session. Analyzing the per-class F1 scores (\cref{fig:task3_f1_comparison}), we observe that the model performs well on high-support classes (\emph{Discovery}: \num{0.91}, \emph{Execution}: \num{0.87}, \emph{Persistence}: \num{0.92}) but struggles with minority classes (\emph{Defense Evasion}: 0.40, \emph{Other}: \num{0.34}).
 
-\begin{figure}[t]
+
+\begin{figure}
 	\centering
     \subfloat[][{Validation loss.}\label{fig:task3_bert_val}]
 	{\includegraphics[width=.48\linewidth]{img/Task3/task3_bert_fine_tuned_val_loss.png}} \quad
@@ -17,88 +17,78 @@ The performance on the test set is summarized in \cref{tab:task3_bert_comparison
 \end{figure}
 
 \subsection{Naked BERT Baseline}
-To verify that pre-training is essential, we train a naked BERT model---the same architecture initialized with random weights---from scratch. After grid search ($5\times10^{-6}$, $10^{-5}$, $5\times10^{-5}$), we select the configuration with 25 epochs based on validation F1-score.
+\paragraph{Model selection} To verify that pre-training is essential, we train a naked BERT model from scratch, meaning that we use the same architecture of the previous case, but initialized with random weights. We train the model for 40 epochs and with three different learning rates (\num{5e-6}, \num{1e-5}, \num{5e-5}). Following the same approach previously used, we select the configuration with 25 epochs and learning rate \num{5e-5}, since it achieves the best validation loss and macro F1-score among the experimented configurations.
 
-\Cref{tab:task3_bert_comparison} compares the results, while \cref{fig:task3_f1_comparison} visualizes the per-class F1 differences. The naked BERT achieves only \SI{74.02}{\percent} token accuracy, a drop of nearly 13 percentage points compared to the pre-trained version. This confirms that SSH command classification is not trivial: the 251 training samples are insufficient for learning from scratch, and pre-trained weights provide essential linguistic knowledge that the naked model cannot discover with such limited data.
+\paragraph{Performance evaluation} \Cref{tab:task3_comparison} compares the results between the pre-trained BERT model and the naked one. The naked BERT achieves only \SI{74.02}{\percent} token accuracy, a drop of nearly 13 percentage points compared to the pre-trained version. Also macro precision, recall and F1-score are significantly lower than in the previous case, while the average session fidelity is only slightly worse (\num{0.77} vs \num{0.83}). Moreover, \cref{fig:task3_f1_comparison} shows that naked BERT achieves a lower F1-score in all classes compared to the fine-tuned model.  This confirms that SSH command classification is not trivial: the 251 training samples are insufficient for learning from scratch, and pre-trained weights provide essential baseline knowledge that the naked model cannot discover with such limited data.
+
+\subsection{Fine-tuning Unixcoder}
+\paragraph{Model selection} Since Unixcoder was pre-trained on a large code corpus, we hypothesize it has more relevant prior knowledge for SSH command analysis. To find the best learning rate and number of epochs, we performed a grid search over learning rates \num{5e-6}, \num{1e-5}, \num{4e-5}, training all models for 40 epochs. \Cref{fig:task3_unixcoder_results} shows the validation loss and macro F1-score curves: the \num{1e-5} learning rate achieves stable convergence with validation loss decreasing smoothly and macro F1-score reaching $\approx\num{0.65}$, outperforming all BERT configurations. Consequently, we selected the model trained with \num{1e-5} to prioritize validation stability over the more volatile convergence of higher learning rates, anyway leading to similar performance. Moreover, we implemented manual early stopping at epoch 15 to prevent overfitting.
+
+\paragraph{Performance evaluation} \Cref{tab:task3_comparison} summarizes the results achieved by the model on the test set. The hypothesis is confirmed: Unixcoder achieves \SI{89.01}{\percent} token accuracy, outperforming pre-trained BERT by over 2 percentage points. The macro F1-score improves from \num{0.64} to \num{0.69} ($+\num{0.05}$). While Unixcoder achieves a slightly lower token precision ($-\SI{0.43}{\percent}$), the recall increases by \SI{5.2}{\percent} with respect to pre-trained BERT. Unixcoder's specialized vocabulary and representations learned from code corpora enable better handling of shell syntax, operators, and path structures. As shown in \cref{fig:task3_f1_comparison}, Unixcoder is significantly better at identifying \emph{Defense Evasion} samples (F1-score \num{0.76} vs \num{0.40} for pre-trained BERT), likely because code pre-training helps recognize obfuscation patterns; instead Unixcoder only performs similarly to pre-trained BERT on the other tags.
 
 \begin{table}
 \small
 \centering
-\caption{Comparison between pre-trained BERT and naked BERT on the test set. Precision, Recall, and F1 are computed using macro-averaging.}
-\label{tab:task3_bert_comparison}
+\caption{Comparison of token classification metrics between all models on the test set. Precision, Recall, and F1-score are computed using macro-averaging.}
+\label{tab:task3_comparison}
 \begin{tabular}{lccccc}
 \toprule
-Model & Token Accuracy & Precision & Recall & F1 score & Avg Fidelity \\
+Model & Accuracy & Precision & Recall & F1-score & Avg Fidelity \\
 \midrule
-Pre-trained BERT  & 0.8694 & 0.8402 & 0.5746 & 0.6399 & 0.8267 \\
-Naked BERT        & 0.7402 & 0.5469 & 0.4775 & 0.4925 & 0.7701 \\
+Pre-trained BERT  		& 0.8694 & 0.8402 & 0.5746 & 0.6399 & 0.8267 \\
+Naked BERT        		& 0.7402 & 0.5469 & 0.4775 & 0.4925 & 0.7701 \\
+Unixcoder (Full)  		& 0.8901 & 0.8359 & 0.6265 & 0.6909 & 0.8411 \\
+Unixcoder (Last 2 + Head)  	& 0.8714 & 0.8043 & 0.5972 & 0.6521 & 0.8294 \\
+Unixcoder (Head Only) 	& 0.8035 & 0.7206 & 0.5093 & 0.5628 & 0.7527 \\
 \bottomrule
 \end{tabular}
 \end{table}
 
-\subsection{Fine-tuning UniXcoder}
-Since UniXcoder was pre-trained on a large code corpus, we hypothesize it has more relevant prior knowledge for SSH command analysis. After grid search ($5\times10^{-6}$, $10^{-5}$, $4\times10^{-5}$), we select the configuration with 15 epochs. \Cref{fig:task3_unixcoder_results} shows the validation curves: the $10^{-5}$ learning rate achieves stable convergence with validation loss decreasing smoothly and F1-score reaching $\approx$0.72, outperforming all BERT configurations.
+\begin{table}
+\small
+\centering
+\caption{Comparison of the number of parameters and training time using different fine-tuning strategies for Unixcoder.}
+\label{tab:task3_alternative}
+\begin{tabular}{lS[table-format=9.0, group-minimum-digits = 4]S[table-format=3.3]
+c}
+\toprule
+Configuration & {Trainable Parameters} & {\si{\percent} Trainable Parameters} & Time/epoch \\
+\midrule
+Full fine-tuning       & 125344519 & 100.000  & \SI{4.5}{\second} \\
+Last 2 Layers + Head  & 14181127 & 11.310 & \SI{2.0}{\second} \\
+Head Only          & 5383 & 0.004  & \SI{1.5}{\second} \\
+\bottomrule
+\end{tabular}
+\end{table}
 
-The hypothesis is confirmed: UniXcoder achieves \SI{89.01}{\percent} token accuracy, outperforming pre-trained BERT by over 2 percentage points. The macro F1-score improves from 0.6399 to 0.6909 (+5.1 points). UniXcoder's specialized vocabulary and representations learned from code corpora enable better handling of shell syntax, operators, and path structures. As shown in \cref{fig:task3_f1_comparison}, UniXcoder is significantly better at identifying \emph{Defense Evasion} samples (F1-score 0.76 vs 0.40 for BERT), likely because code pre-training helps recognize obfuscation patterns.
+\begin{figure}
+	\centering
+	\includegraphics[width=0.98\linewidth]{img/Task3/bert_unixcoder_barplot.png}
+	\caption{Per-class F1 scores on the test set for all model configurations.}
+	\label{fig:task3_f1_comparison}
+\end{figure}
 
-\begin{figure}[t]
+\begin{figure}
 	\centering
     \subfloat[][{Validation loss.}\label{fig:task3_unix_val}]
 	{\includegraphics[width=.48\linewidth]{img/Task3/task3_unixcoder_fine_tuned_val_loss.png}} \quad
 	\subfloat[][{Validation macro F1-score.}\label{fig:task3_unix_f1_curve}]
 	{\includegraphics[width=.48\linewidth]{img/Task3/task3_unixcoder_fine_tuned_val_macro_f1_scores.png}} \\
-  	\caption{Validation curves for UniXcoder with different learning rates.}\label{fig:task3_unixcoder_results}
+  	\caption{Validation curves for Unixcoder with different learning rates.}\label{fig:task3_unixcoder_results}
 \end{figure}
 
 \subsection{Alternative Fine-tuning Strategies}
-We explore parameter-efficient fine-tuning by freezing portions of the UniXcoder encoder. We test two configurations: (1)~training only the last 2 encoder layers + classification head, and (2)~training only the classification head. Full fine-tuning trains all 125.3M parameters, ``Last 2 + Head'' trains 14.18M (\SI{11.31}{\percent}), and ``Head Only'' trains only 5.38k (\SI{0.004}{\percent}).
+We explore parameter-efficient fine-tuning by freezing portions of the Unixcoder model, that, as analyzed in the previous paragraphs, it is the best performing one. We test two configurations: (1)~training only the last 2 encoder layers + classification head, and (2)~training only the classification head.
 
-Full fine-tuning achieves the highest F1-score ($\approx$0.72) with stable convergence. ``Last 2 + Head'' reaches F1~$\approx$0.67, demonstrating that freezing most layers still yields competitive results. ``Head Only'' converges quickly but plateaus at F1~$\approx$0.57, indicating that the frozen encoder cannot fully adapt to the SSH domain.
+\paragraph{Model Selection} To find the best learning rate and number of epochs, we performed a grid search over learning rates \num{1e-5}, \num{5e-5}, \num{7.5e-5} for the fine-tuning of the last two encoding layers + classification head and \num{1e-4}, \num{5e-4}, \num{1e-3} for the fine-tuning of the classification head, training all models for 40 epochs. Given the validation loss curves and the validation macro F1-score, we select learning rate \num{5e-5} and 20 epochs for the first model, and \num{1e-3} and 10 epochs for the second one.
 
-\paragraph{Performance trade-offs} \Cref{tab:task3_alternative} summarizes the test set results. ``Last 2 + Head'' loses only \SI{1.87}{\percent} accuracy while reducing trainable parameters by \SI{88.69}{\percent}, offering a good efficiency-performance trade-off with 2--3$\times$ training speedup. However, ``Head Only'' loses \SI{8.66}{\percent} accuracy because frozen representations cannot capture domain-specific patterns.
+\paragraph{Strategies comparison} \Cref{tab:task3_alternative} summarizes the number of parameters and training time\footnote{Executed on Google Colab, Runtime with T4 GPU} using different fine-tuning strategies for Unixcoder. The full fine-tuning trains all 125.3M parameters, ``Last 2 Layers + Head'' trains 14.18M parameters (\SI{11.31}{\percent}), and ``Head Only'' trains only 5.38k parameters (\SI{0.004}{\percent}). Consequently, reducing the number of parameters to train also leads to a reduction in the training time: in the  ``Last 2 Layers + Head'' configuration the time to complete each epoch is less than half compared to that of the full fine-tuning scenario (\SI{2.0}{\second} vs \SI{4.5}{\second}). In the ``Head Only'' this time is even smaller (\SI{1.5}{\second}).
 
-\begin{table}[t]
-\small
-\centering
-\caption{Parameter-efficient fine-tuning comparison for UniXcoder on the test set. Metrics are macro-averaged.}
-\label{tab:task3_alternative}
-\begin{tabular}{lccc}
-\toprule
-\textbf{Configuration} & \textbf{Trainable Params.} & \textbf{Token Acc.} & \textbf{F1} \\
-\midrule
-Full Fine-Tune     & 100.00\%  & 0.8901 & 0.6909 \\
-Last 2 + Head      & 11.31\%   & 0.8714 & 0.6521 \\
-Head Only          & 0.004\%   & 0.8035 & 0.5628 \\
-\bottomrule
-\end{tabular}
-\end{table}
+When fine-tuning only the final layers of the Unixcoder model, we observed that a higher learning rate is necessary to achieve optimal convergence, especially in the ``Head Only'' case.  While full fine-tuning typically utilizes a smaller learning rate to preserve pre-trained knowledge across the entire architecture, partial fine-tuning requires a more aggressive approach in the unfrozen layers to effectively map those fixed features to the target labels within a reasonable number of epochs.
 
-\Cref{fig:task3_f1_comparison} provides a direct comparison of per-class F1-scores across all model configurations, including support counts for each class. UniXcoder (Full) consistently outperforms both BERT variants on minority classes: \emph{Defense Evasion} improves from 0.40 (BERT) to 0.76 (+36 points), and \emph{Impact} from 0.31 to 0.55 (+24 points). Naked BERT confirms the importance of pre-training, with substantially lower F1-scores across all classes. Progressive freezing degrades performance proportionally: ``Last 2 + Head'' maintains competitive scores on majority classes but drops on \emph{Defense Evasion} (0.59) and \emph{Other} (0.18). ``Head Only'' shows the steepest decline, particularly on \emph{Defense Evasion} (0.24), confirming that adapting encoder representations is essential for recognizing obfuscation patterns.
+\paragraph{Performance evaluation} \Cref{tab:task3_comparison} summarizes the test set results. Full fine-tuning achieves the highest results. The ``Last 2 Layers + Head'' fine-tuning shows a drop of less than \SI{3}{\percent} on most metrics, demonstrating that freezing most layers still yields competitive results, while reducing the training time. The ``Head Only'' fine-tuning, instead, achieves considerably lower results, with a \SIrange[range-units = single, range-phrase = \,--\,]{7}{10}{\percent} decrease in respect to the full fine-tuned case, showing that this approach fails to properly learn fundamental discriminative patterns.
 
-\begin{figure}[t]
-	\centering
-	\includegraphics[width=0.9\linewidth]{img/Task3/bert_unixcoder_barplot.png}
-	\caption{Per-class F1-scores on the test set for all model configurations, with support counts shown below each class. UniXcoder (Full) achieves the best performance on minority classes, while Naked BERT confirms the importance of pre-training.}
-	\label{fig:task3_f1_comparison}
-\end{figure}
+\Cref{fig:task3_f1_comparison} provides a comparison of per-class F1 scores across the different configurations. Unixcoder (Full) consistently outperforms both alternative fine-tuning strategies. Progressive freezing degrades performance proportionally: ``Last 2 Layers + Head'' maintains competitive scores on majority classes but drops on \emph{Defense Evasion} (\num{0.59} vs \num{0.76}) and \emph{Impact} (\num{0.39} vs \num{0.50}). Interestingly, it performs better on the \emph{Other} tag (\num{0.45} vs \num{0.34}).  ``Head Only'' performs significantly worse than the other models, particularly on \emph{Not Malicious Yet} (0.29), confirming that adapting encoder representations is essential for recognizing obfuscation patterns. While the fine-tuned BERT model generally performs better than ``Last 2 Layers + Head'' and ``Head Only'', naked BERT is consistently outperformed by all Unixcoder models, demonstrating the importance of pre-training on context specific knowledge.
 
 \subsection{Summary and Best Model Selection}
-\Cref{tab:task3_summary} summarizes all models on the test set. The fully fine-tuned UniXcoder achieves the best performance with \SI{89.01}{\percent} token accuracy and \SI{69.09}{\percent} macro F1-score, demonstrating that code-specific pre-training provides a significant advantage for SSH command classification. We select this model (trained for 15 epochs) for the inference task.
-
-\begin{table}[t]
-\small
-\centering
-\caption{Summary of all models on the test set. Precision, Recall, and F1 are macro-averaged. Best results in bold.}
-\label{tab:task3_summary}
-\begin{tabular}{lcccc}
-\toprule
-\textbf{Model} & \textbf{Token Acc.} & \textbf{Precision} & \textbf{Recall} & \textbf{F1} \\
-\midrule
-Pre-trained BERT      & 0.8694 & 0.8402          & 0.5746 & 0.6399 \\
-Naked BERT            & 0.7402 & 0.5469          & 0.4775 & 0.4925 \\
-UniXcoder (Full)      & \textbf{0.8901} & 0.8359 & \textbf{0.6265} & \textbf{0.6909} \\
-UniXcoder (Last 2+H)  & 0.8714 & 0.8043          & 0.5972 & 0.6521 \\
-UniXcoder (Head Only) & 0.8035 & 0.7206          & 0.5093 & 0.5628 \\
-\bottomrule
-\end{tabular}
-\end{table}
+From the results summarized in \cref{tab:task3_comparison}, it is evident that the best performance is achieved by the fully fine-tuned Unixcoder. Even though the ``Last 2 Layers + Head'' model achieves competitive results with a more time-efficient training, we decided to use the fully fine-tuned model for the inference task discussed in \cref{sec:task4} since we only train the model for 15 epochs and thus the training time difference is negligible.
